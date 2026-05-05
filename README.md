@@ -1,10 +1,10 @@
-# Project Title
+# Income of U.S. Households between 2023-2024
 
-Write a 1-2 sentences that quickly and clearly convey what your repo is for.
+We are currently exploring statistical insights and patters onto the income of U.S. housholds within the U.S. and determining if there is any pattern or relationship that can be formed.
 
 ## Overview
 
-Expand on those introductory sentences with a brief but informative description of your project's purpose and goals. This section should help visitors decide whether they should dig deeper into your repo/project.
+This project aims to explore and analyze a real-world dataset which is the U.S. household datset provided by the United States Cencus. To better understand key relationships between variables and provide valuable insights on key patters or such. Using statistical methods and data visualization techniques we learned thoughout the semester we hope to discover patterns, trends, and potential correlations across multiple different characteristics.
 
 ### Interesting Insight (Optional)
 
