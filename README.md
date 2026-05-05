@@ -7,7 +7,7 @@ We are currently exploring statistical insights and patters onto the income of U
 This project aims to explore and analyze a real-world dataset which is the U.S. household datset provided by the United States Cencus. To better understand key relationships between variables and provide valuable insights on key patters or such. Using statistical methods and data visualization techniques we learned thoughout the semester we hope to discover patterns, trends, and potential correlations across multiple different characteristics.
 
 ### Interesting Insight (Optional)
-![Project Screenshot](images/Screenshot 2026-05-05 150329.png)
+<img width="556" height="477" alt="Image" src="https://github.com/user-attachments/assets/bc7aa91b-0306-4e4f-a86b-90b5182797bc" />
 
 This is optional but highly recommended. You'll include one interesting insight from your project as part of the README. This insight is most effective when you include a visual. Keep in mind that this visual must be included as an image file (e.g., JPG, PNG, etc.). You can export plots created with `{ggplot2}` by using the function `ggsave`.
 
