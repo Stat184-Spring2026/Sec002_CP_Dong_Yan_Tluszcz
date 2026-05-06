@@ -11,6 +11,16 @@ This project aims to explore and analyze a real-world dataset which is the U.S. 
 
 One interesting insight that we gained from the dataset was that there was a slight decline across all fields of study from 2023 to 2024. This could be attributed to many reasons such as inflation or other such events. The decline in wealth is seen much more prevelant on those without a college degree than those who had higher education.
 
+A second notable insight from the analysis is the inverted-U shape
+of the household income–age curve. Median income climbs from around
+$60,000 among 15-24-year-old householders to a peak of $116,800
+among those aged 45-54, before dropping sharply at retirement. The
+youngest age group also experienced the largest year-over-year real
+income gain (+7.0%), suggesting that wage growth in 2024 was
+concentrated among younger workers entering the labor market.
+
+![Median household income by age of householder, 2023 vs 2024](age_income_chart.png)
+
 ## Data Sources and Acknowledgements
 
 The data source we used to obtain this information was from the U.S. Cencus specifically about U.S. household income. The site is a .gov website showing its legitimency and validity.
@@ -30,9 +40,15 @@ Our team plans to:
 A more detailed plan can be found in the project documentation within this repository.
 
 ## Repo Structure
-- ReadME - decribes the project overview.
-- PDF - provides the main documentation with the reposity
-- Education and Gender - shows graphs about the education and gender disparity from 2023 to 2024
+- `README.md` — this file; project overview and insights
+- `report_ethan.qmd` —  Quarto source file for ethan's analysis
+- `plan.md` — project plan in goal/needs/steps format
+- `references.bib` — BibTeX bibliography for citations
+- `apa7.csl` — citation style files
+- `age_income_raw.csv` — age of householder data (Ethan)
+- `age_income_chart.png` / `age_income_table.png` — exported visuals
+- `Project_Guidelines.md` — course-provided rubric
+- `.gitignore` / `.lintr` — version control and code-style configs
 
 ## Authors
 
