@@ -173,7 +173,10 @@ execute:
   bibliography: references.bib
   csl: apa7.csl
 ---
+## Introduction
 
+#This report examines how household income in the United States varies across three major demographic characteristics: education, gender, and age. Using recent U.S. Census Bureau income data from 2023 and 2024, the analysis compares patterns in median household income and evaluates how these patterns changed over time.
+#The goal is to identify which household groups earn more, which groups experienced income growth or decline, and what these differences suggest about broader economic inequality in the United States. The analysis focuses on three key dimensions. First, education is examined to measure how income changes with educational attainment. Second, gender is analyzed to compare differences in household income between male- and female-householder households. Third, age is explored to understand how income changes across the life cycle.
 ```{r}
 #| label: setupPackages
 #| include: false
@@ -458,3 +461,6 @@ This analysis captures a short-term snapshot rather than a long-term structural 
 #| echo: true
 #| eval: false
 ```
+#Fair and Care Principals
+#The case attributes are also clearly defined and interpreted. These attributes include median household income in 2023 and 2024, percent change in real income, margins of error, and group labels such as education level, gender, and age category. These variables are used consistently across all three sections to compare economic outcomes. Units are also made explicit where appropriate: income is measured in inflation-adjusted U.S. dollars, percent change is reported as a percentage, and margins of error indicate statistical uncertainty in the Census estimates.
+#From a fairness perspective, the report is strong because the unit of analysis remains consistent within each section and the variables are interpreted in context rather than treated as isolated numbers. The distinction between cases (household groups) and attributes (income, age category, percent change, etc.) is maintained clearly, which supports accurate comparisons and reduces ambiguity in interpretation.
