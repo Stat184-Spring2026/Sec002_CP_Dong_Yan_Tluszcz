@@ -38,7 +38,7 @@ execute:
 
 #Load Required Packages
 # Style Guide: BOAST/Tidyverse (https://style.tidyverse.org/)
-# Coding standards: snake_case for column names, camelCase for 
+# Coding standards: snake_case for column names, camelCase for
 # variable names, native pipe |>,
 library(tidyverse)
 library(tinytex)
@@ -77,10 +77,10 @@ column into numeric type.
 # Primary Author: Ethan Tluszcz
 #Read and clean Census age income data
 
-# Step 1: Read the raw CSV 
+# Step 1: Read the raw CSV
 ageRaw <- read.csv("age_income_raw.csv")
 
-# Step 2: Wrangle in a piped sequence 
+# Step 2: Wrangle in a piped sequence
 ageIncome <- ageRaw |>
   rename(
     age_group = characteristic,
@@ -173,7 +173,8 @@ ageIncome |>
 #| label: fig-ageIncomeCurve
 #| fig-cap: "Median Household Income by Age of Householder, 2023 vs 2024"
 #| fig-pos: H
-#| fig-alt: "Line graph comparing median household income by age group for 2023 and 2024, showing income increases and decreases."
+#| fig-alt: "Line graph comparing median household income by age group for 2023 and 2024,
+#|  showing income increases and decreases."
 #| fig-height: 4.5
 
 # Primary Author: Ethan Tluszcz
