@@ -1,0 +1,266 @@
+---
+title: "Income Inequality Analysis in the United States (2023–2024)"
+author: "Your Name"
+format:
+  html:
+    toc: true
+    number-sections: true
+    theme: cosmo
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Introduction
+
+This report analyzes income inequality in the United States between 2023 and 2024 using two perspectives:
+
+1. Education-based income inequality
+2. Gender-based income inequality
+
+The goal is to examine whether income gaps are widening or narrowing across demographic groups.
+
+# Load Packages
+
+```{r}
+library(tidyverse)
+library(scales)
+```
+
+# Education and Earnings Premium
+
+## Background
+
+Educational attainment is strongly associated with income levels.  
+This section evaluates the earnings premium associated with higher education relative to high school graduates.
+
+## Data
+
+```{r}
+edu_summary <- data.frame(
+  education = c(
+    "No high school diploma",
+    "High school graduate",
+    "Some college",
+    "Bachelor's degree or higher"
+  ),
+  income_2023 = c(37570, 57250, 75510, 130100),
+  income_2024 = c(36900, 58410, 76520, 132700),
+  percent_change = c(-1.8, 2.0, 1.3, 2.0)
+)
+
+edu_summary
+```
+
+## Earnings Premium Calculation
+
+We use high school graduates as the baseline group.
+
+```{r}
+hs_2023 <- edu_summary$income_2023[2]
+hs_2024 <- edu_summary$income_2024[2]
+
+premium_analysis <- edu_summary %>%
+  mutate(
+    premium_2023 = (income_2023 / hs_2023) - 1,
+    premium_2024 = (income_2024 / hs_2024) - 1,
+    premium_delta = premium_2024 - premium_2023
+  )
+
+premium_analysis %>%
+  select(
+    education,
+    premium_2023,
+    premium_2024,
+    premium_delta
+  )
+```
+
+## Visualization
+
+```{r}
+plot_data <- premium_analysis %>%
+  filter(education != "High school graduate") %>%
+  pivot_longer(
+    cols = c(premium_2023, premium_2024),
+    names_to = "Year",
+    values_to = "Premium"
+  ) %>%
+  mutate(
+    Year = ifelse(
+      Year == "premium_2023",
+      "2023",
+      "2024"
+    )
+  )
+
+ggplot(
+  plot_data,
+  aes(
+    x = reorder(education, Premium),
+    y = Premium,
+    fill = Year
+  )
+) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+  ) +
+  scale_y_continuous(labels = percent) +
+  labs(
+    title = "Higher Education Earnings Premium (2023 vs 2024)",
+    subtitle = "Relative to High School Graduates",
+    x = "Education Level",
+    y = "Premium Percentage",
+    caption = "Source: U.S. Census Bureau CPS ASEC"
+  ) +
+  theme_minimal()
+```
+
+## Interpretation
+
+The results indicate that individuals with higher educational attainment continue to earn substantially more than high school graduates.
+
+However, the earnings premium associated with higher education appears to be slightly diminishing between 2023 and 2024. This suggests that income growth among high school graduates may be catching up modestly relative to higher education groups.
+
+# Gender Income Gap Analysis
+
+## Background
+
+This section investigates gender-based income inequality among nonfamily households.
+
+## Data
+
+```{r}
+gender_df <- data.frame(
+  group = c(
+    "Male Householder",
+    "Female Householder"
+  ),
+  income_2023 = c(58680, 43230),
+  income_2024 = c(58000, 44870),
+  moe_2024 = c(1866, 1256)
+)
+
+gender_df
+```
+
+## Gender Income Ratio
+
+We calculate the female-to-male income ratio for each year.
+
+```{r}
+gender_analysis <- gender_df %>%
+  summarise(
+    ratio_2023 =
+      gender_df$income_2023[2] /
+      gender_df$income_2023[1],
+
+    ratio_2024 =
+      gender_df$income_2024[2] /
+      gender_df$income_2024[1]
+  ) %>%
+  mutate(
+    improvement = ratio_2024 - ratio_2023,
+    status = ifelse(
+      improvement > 0,
+      "Gap Narrowing",
+      "Gap Widening"
+    )
+  )
+
+gender_analysis
+```
+
+## Visualization
+
+```{r}
+plot_gender <- gender_df %>%
+  pivot_longer(
+    cols = starts_with("income"),
+    names_to = "Year",
+    values_to = "Income"
+  ) %>%
+  mutate(
+    Year = ifelse(
+      Year == "income_2023",
+      "2023",
+      "2024"
+    )
+  )
+
+ggplot(
+  plot_gender,
+  aes(
+    x = group,
+    y = Income,
+    fill = Year
+  )
+) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge"
+  ) +
+  geom_text(
+    aes(label = dollar(Income)),
+    position = position_dodge(0.9),
+    vjust = -0.5
+  ) +
+  labs(
+    title = "Median Income by Gender",
+    subtitle = "Nonfamily Households (2023–2024)",
+    x = "Group",
+    y = "Income (2024 Dollars)"
+  ) +
+  theme_minimal()
+```
+
+## Interpretation
+
+The gender income gap narrowed slightly between 2023 and 2024.
+
+Although male householders still report higher median income levels, female householders experienced relatively stronger income growth during this period.
+
+This suggests modest progress toward gender income equality.
+
+# Conclusion
+
+This report examined two dimensions of income inequality:
+
+- Educational attainment
+- Gender
+
+Key findings include:
+
+- Higher education remains strongly associated with higher income.
+- The education earnings premium slightly declined from 2023 to 2024.
+- The gender income gap narrowed modestly over the same period.
+
+Overall, while structural income inequality persists, some indicators suggest gradual improvement in income equality across demographic groups.
+
+# References
+
+- U.S. Census Bureau Current Population Survey (CPS ASEC)
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
