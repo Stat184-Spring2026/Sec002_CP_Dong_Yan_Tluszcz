@@ -1,0 +1,706 @@
+---
+title: "Demographic Variation in U.S. Household Income, 2023-2024"
+subtitle: "Stat 184 Course Project"
+author: "William Dong, Bingjie Yan, Ethan Tluszcz"
+date: "May 6, 2026"
+date-modified: now
+format:
+  pdf:
+    toc: false
+    number-sections: true
+    number-depth: 5
+    fig-align: center
+    cap-location: top
+    geometry:
+      - top=1in
+      - left=1in
+      - right=1in
+      - bottom=1in
+    colorlinks: true
+    include-in-header:
+      text: |
+        \usepackage{fvextra}
+        \DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+          commandchars=\\\{\},
+          breaklines,
+          breaknonspaceingroup,
+          breakanywhere
+        }
+execute:
+  echo: false
+  warning: false
+  message: false
+bibliography: references.bib
+csl: apa7.csl
+---
+
+```{r}
+#| label: setupPackages
+#| include: false
+
+# ---- Load Required Packages ----
+# Style Guide: BOAST/Tidyverse (https://style.tidyverse.org/)
+# Coding standards: snake_case for column names, camelCase for variable
+# names, native pipe |>
+
+library(tidyverse)
+library(tinytex)
+library(knitr)
+library(kableExtra)
+library(scales)
+```
+
+# Introduction
+
+Household income is one of the most widely used measures of economic
+well-being in the United States, but the headline national figures
+mask substantial variation across demographic groups. The U.S. Census
+Bureau's Current Population Survey Annual Social and Economic
+Supplement (CPS ASEC) publishes detailed income summaries that allow
+researchers to compare how median household income varies by
+educational attainment, gender, age of householder, and other
+characteristics [@censusBureau2025].
+
+This report conducts an exploratory data analysis on U.S. household
+income for 2023 and 2024, focusing on three characteristics:
+educational attainment, gender of householder, and age of
+householder. Our goal is to identify which characteristics are
+associated with the largest disparities in median household income
+and which groups experienced meaningful year-over-year change.
+
+# Data and Methods
+
+## Data Source and Provenance
+
+The data come from the Census Bureau report *Income in the United
+States: 2024* (Report Number P60-285), Table A-1: *Income Summary
+Measures by Selected Characteristics, 2023 and 2024*. Income figures
+are reported in 2024 dollars, adjusted using the Chained Consumer
+Price Index for All Urban Consumers (C-CPI-U), and households are
+surveyed as of March of the following year. The underlying data are
+collected by the Census Bureau and the Bureau of Labor Statistics
+through the Annual Social and Economic Supplement to the Current
+Population Survey, a long-running household survey that has been the
+primary source of official U.S. income statistics since 1948.
+
+The data are publicly available, freely accessible, and licensed for
+unrestricted use as a U.S. government work in the public domain. We
+accessed the publication on April 30, 2026 from
+<https://www.census.gov/library/publications/2025/demo/p60-285.html>.
+
+## FAIR and CARE Assessment
+
+The CPS ASEC data set scores well on each of the FAIR principles for
+data stewardship [@wilkinson2016]. The data are *findable* through
+persistent Census Bureau publication URLs and report numbers
+(P60-285); they are *accessible* without authentication or fees;
+they are *interoperable* in standard CSV and Excel formats with rich
+column metadata; and they are *reusable* under the public-domain
+licensing that applies to all U.S. federal government works.
+
+The CARE principles for Indigenous Data Governance [@carroll2020] are
+not directly applicable to this data set because CPS ASEC is a
+general-population household survey and does not contain Indigenous
+community data subject to Indigenous data sovereignty. We note this
+explicitly rather than skip the assessment, because the act of
+checking is part of CARE.
+
+## Data Wrangling
+
+The Census Bureau publishes Table A-1 in a format that mixes section
+headers with data rows, encodes household and dollar values as
+comma-separated text, and embeds statistical-significance flags as
+asterisks within otherwise-numeric percent-change columns. Each
+section below applies a piped wrangling sequence to its data slice:
+rename columns to consistent snake-case names, drop aggregate rows
+that would double-count detail rows, capture the asterisk flags into
+dedicated logical columns, and use `parse_number()` from `{readr}` to
+coerce character-formatted numeric columns into proper numeric type.
+
+{{< pagebreak >}}
+
+# Findings
+
+## Educational Attainment
+
+The education results show a clear earnings premium associated with
+higher educational attainment. As shown in @tbl-educationIncome,
+households headed by individuals with a bachelor's degree or higher
+earned substantially more than all other education groups in both
+years, reinforcing the strong income advantage of college completion.
+Those with some college also earned more than high school graduates,
+though the difference was much smaller.
+
+A notable exception appears among households without a high school
+diploma. This group was the only education category to experience a
+decline in real median income from 2023 to 2024, indicating that
+households with the lowest educational attainment became slightly
+worse off in inflation-adjusted terms. In contrast, all other
+education groups saw modest gains, suggesting that income growth in
+2024 was concentrated among households with at least a high school
+education. @fig-educationPremium plots the earnings premium relative
+to high school graduates, showing the gap between higher-education
+households and the high-school baseline.
+
+```{r}
+#| label: dataEducationWrangle
+
+# Primary Author: William Dong
+# Reviewer: Bingjie Yan
+# ---- Build education income data and earnings premium ----
+
+eduSummary <- data.frame(
+  education = c(
+    "No high school diploma",
+    "High school graduate",
+    "Some college",
+    "Bachelor's degree or higher"
+  ),
+  income_2023 = c(37570, 57250, 75510, 130100),
+  income_2024 = c(36900, 58410, 76520, 132700),
+  percent_change = c(-1.8, 2.0, 1.3, 2.0)
+)
+
+# Compute earnings premium relative to high school graduates ----
+hs_2023 <- eduSummary$income_2023[2]
+hs_2024 <- eduSummary$income_2024[2]
+
+eduPremium <- eduSummary |>
+  mutate(
+    premium_2023 = (income_2023 / hs_2023) - 1,
+    premium_2024 = (income_2024 / hs_2024) - 1,
+    premium_delta = premium_2024 - premium_2023
+  )
+```
+
+```{r}
+#| label: tbl-educationIncome
+#| tbl-cap: "Median Household Income by Educational Attainment, 2023-2024"
+#| tbl-pos: H
+#| html-table-processing: none
+
+# Primary Author: William Dong
+# Reviewer: Bingjie Yan
+# ---- Build education income table ----
+
+eduSummary |>
+  mutate(
+    pct_change_label = paste0(
+      if_else(condition = (percent_change > 0), true = "+", false = ""),
+      format(percent_change, nsmall = 1),
+      "%"
+    )
+  ) |>
+  select(
+    education,
+    income_2023,
+    income_2024,
+    pct_change_label
+  ) |>
+  kable(
+    digits = 0,
+    col.names = c(
+      "Education Level",
+      "Median 2023",
+      "Median 2024",
+      "Percent Change"
+    ),
+    format.args = list(big.mark = ","),
+    align = "lccc",
+    booktabs = TRUE
+  ) |>
+  kable_classic(latex_options = c("HOLD_position")) |>
+  footnote(
+    general = paste(
+      "Median income reported in 2024 dollars (CPI-U adjusted).",
+      "Source: U.S. Census Bureau, CPS ASEC, Table A-1."
+    ),
+    general_title = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: fig-educationPremium
+#| fig-cap: "Higher Education Earnings Premium Relative to High School Graduates, 2023 vs 2024"
+#| fig-pos: H
+#| fig-alt: "Bar chart showing the earnings premium relative to high school graduates for three education levels in 2023 and 2024. Bachelor's degree or higher shows the largest premium at about 130 percent above high school, followed by some college at about 30 percent. Households with no high school diploma earn about 35 percent less than the baseline."
+#| fig-height: 3.8
+
+# Primary Author: William Dong
+# Reviewer: Bingjie Yan
+# ---- Build education premium plot ----
+
+eduPlot <- eduPremium |>
+  filter(education != "High school graduate") |>
+  pivot_longer(
+    cols = c(premium_2023, premium_2024),
+    names_to = "Year",
+    values_to = "Premium"
+  ) |>
+  mutate(
+    Year = if_else(Year == "premium_2023", "2023", "2024"),
+    education = factor(
+      education,
+      levels = c(
+        "No high school diploma",
+        "Some college",
+        "Bachelor's degree or higher"
+      )
+    )
+  )
+
+ggplot(
+  data = eduPlot,
+  mapping = aes(x = education, y = Premium, fill = Year)
+) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = label_percent()) +
+  scale_fill_manual(values = c("2023" = "#BC204B", "2024" = "#1E407C")) +
+  labs(
+    x = "Education Level",
+    y = "Premium Relative to High School",
+    fill = "Year",
+    caption = "Source: U.S. Census Bureau, CPS ASEC, Table A-1."
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    plot.caption = element_text(hjust = 0)
+  )
+```
+
+## Gender of Householder
+
+The gender comparison shows that male-householder households earned
+more than female-householder households in both 2023 and 2024, as
+reported in @tbl-genderIncome. Although median income remained higher
+for men, female-householder households experienced income growth
+between the two years while male-householder households experienced a
+slight decline.
+
+As a result, the female-to-male income ratio improved in 2024,
+indicating that the gender income gap narrowed slightly.
+@fig-genderRatio visualizes this comparison directly. Despite this
+improvement, the gap remains substantial, with female-householder
+households continuing to earn considerably less than male-householder
+households overall.
+
+```{r}
+#| label: dataGenderWrangle
+
+# Primary Author: Bingjie Yan
+# Reviewer: Ethan Tluszcz
+# ---- Build gender income data and ratio ----
+
+genderDf <- data.frame(
+  group = c("Male Householder", "Female Householder"),
+  income_2023 = c(58680, 43230),
+  income_2024 = c(58000, 44870),
+  moe_2024 = c(1866, 1256)
+)
+
+# Calculate female-to-male ratio for each year ----
+ratio_2023 <- genderDf$income_2023[2] / genderDf$income_2023[1]
+ratio_2024 <- genderDf$income_2024[2] / genderDf$income_2024[1]
+
+genderRatio <- data.frame(
+  year = c("2023", "2024"),
+  ratio = c(ratio_2023, ratio_2024)
+)
+```
+
+```{r}
+#| label: tbl-genderIncome
+#| tbl-cap: "Median Household Income by Gender of Householder, Nonfamily Households, 2023-2024"
+#| tbl-pos: H
+#| html-table-processing: none
+
+# Primary Author: Bingjie Yan
+# Reviewer: Ethan Tluszcz
+# ---- Build gender income table ----
+
+genderDf |>
+  mutate(
+    percent_change = (income_2024 - income_2023) / income_2023 * 100,
+    pct_change_label = paste0(
+      if_else(condition = (percent_change > 0), true = "+", false = ""),
+      format(round(percent_change, 1), nsmall = 1),
+      "%"
+    )
+  ) |>
+  select(
+    group,
+    income_2023,
+    income_2024,
+    pct_change_label
+  ) |>
+  kable(
+    digits = 0,
+    col.names = c(
+      "Householder",
+      "Median 2023",
+      "Median 2024",
+      "Percent Change"
+    ),
+    format.args = list(big.mark = ","),
+    align = "lccc",
+    booktabs = TRUE
+  ) |>
+  kable_classic(latex_options = c("HOLD_position")) |>
+  footnote(
+    general = paste(
+      "Median income reported in 2024 dollars (CPI-U adjusted).",
+      "Source: U.S. Census Bureau, CPS ASEC, Table A-1."
+    ),
+    general_title = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: fig-genderRatio
+#| fig-cap: "Median Income Comparison: Male vs Female Householders, 2023 vs 2024"
+#| fig-pos: H
+#| fig-alt: "Grouped bar chart comparing median income for male and female nonfamily householders in 2023 and 2024. Male householders earn about 58,000 dollars in both years; female householders earn about 43,000 in 2023 and about 45,000 in 2024, narrowing the gap slightly."
+#| fig-height: 3.8
+
+# Primary Author: Bingjie Yan
+# Reviewer: Ethan Tluszcz
+# ---- Build gender income comparison plot ----
+
+genderPlot <- genderDf |>
+  pivot_longer(
+    cols = starts_with("income"),
+    names_to = "Year",
+    values_to = "Income"
+  ) |>
+  mutate(
+    Year = if_else(Year == "income_2023", "2023", "2024")
+  )
+
+ggplot(
+  data = genderPlot,
+  mapping = aes(x = group, y = Income, fill = Year)
+) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(
+    mapping = aes(label = label_dollar()(Income)),
+    position = position_dodge(0.9),
+    vjust = -0.5,
+    size = 3.2
+  ) +
+  scale_y_continuous(
+    labels = label_dollar(),
+    limits = c(0, 70000)
+  ) +
+  scale_fill_manual(values = c("2023" = "#BC204B", "2024" = "#1E407C")) +
+  labs(
+    x = "Householder",
+    y = "Median Household Income (2024 dollars)",
+    fill = "Year",
+    caption = "Source: U.S. Census Bureau, CPS ASEC, Table A-1."
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    plot.caption = element_text(hjust = 0)
+  )
+```
+
+## Age of Householder
+
+Median household income follows a clear life-cycle pattern across age
+groups. As shown in @tbl-ageIncome, income climbs from \$60,310 among
+15--24-year-old householders in 2024 to a peak of \$116,800 among
+those aged 45--54, before dropping to \$56,680 for households aged 65
+and older. @fig-ageIncomeCurve plots both years as overlaid lines so
+the year-over-year change at each life stage is easy to read.
+
+```{r}
+#| label: dataAgeWrangle
+
+# Primary Author: Ethan Tluszcz
+# Reviewer: William Dong
+# ---- Read and clean Census age income data ----
+
+# Step 1: Read the raw CSV
+ageRaw <- read.csv("age_income_raw.csv")
+
+# Step 2: Wrangle in a piped sequence
+ageIncome <- ageRaw |>
+  rename(
+    age_group = characteristic,
+    households_2023 = Population_2023,
+    median_2023 = Income_2023,
+    moe_2023 = MOE_2023,
+    households_2024 = Population_2024,
+    median_2024 = Income_2024,
+    moe_2024 = MOE_2024,
+    pct_change = pct_change_Income,
+    pct_change_moe = pct_change_MOE
+  ) |>
+  filter(age_group != "Under 65 years") |>
+  mutate(
+    significant_change = if_else(
+      condition = (age_group %in% c(
+        "15 to 24 years",
+        "35 to 44 years",
+        "45 to 54 years"
+      )),
+      true = TRUE,
+      false = FALSE
+    ),
+    pct_change = parse_number(pct_change)
+  )
+```
+
+```{r}
+#| label: tbl-ageIncome
+#| tbl-cap: "Median Household Income by Age of Householder, 2023-2024"
+#| tbl-pos: H
+#| html-table-processing: none
+
+# Primary Author: Ethan Tluszcz
+# Reviewer: William Dong
+# ---- Build age income table ----
+
+ageIncome |>
+  mutate(
+    pct_change_label = paste0(
+      if_else(condition = (pct_change > 0), true = "+", false = ""),
+      format(pct_change, nsmall = 1),
+      "%",
+      if_else(condition = significant_change, true = "*", false = "")
+    )
+  ) |>
+  select(
+    age_group,
+    households_2023,
+    median_2023,
+    households_2024,
+    median_2024,
+    pct_change_label
+  ) |>
+  kable(
+    digits = 0,
+    col.names = c(
+      "Age",
+      "Households 2023",
+      "Median 2023",
+      "Households 2024",
+      "Median 2024",
+      "Percent Change"
+    ),
+    format.args = list(big.mark = ","),
+    align = "lccccc",
+    booktabs = TRUE
+  ) |>
+  kable_classic(latex_options = c("HOLD_position", "scale_down")) |>
+  footnote(
+    general = paste(
+      "Household counts are reported in thousands.",
+      "Median income is reported in 2024 dollars (CPI-U adjusted).",
+      "Asterisks indicate that the year-over-year change in real income",
+      "was statistically significant at the 90% confidence level.",
+      "Source: U.S. Census Bureau, CPS ASEC, Table A-1."
+    ),
+    general_title = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: fig-ageIncomeCurve
+#| fig-cap: "Median Household Income by Age of Householder, 2023 vs 2024"
+#| fig-pos: H
+#| fig-alt: "Line graph showing median U.S. household income by age of householder for 2023 and 2024. Both years follow an inverted-U curve, peaking among households aged 45 to 54 around $116,000 and falling sharply at retirement. The 15-24 group gained the most year-over-year, +7.0%, statistically significant."
+#| fig-height: 4.5
+
+# Primary Author: Ethan Tluszcz
+# Reviewer: William Dong
+# ---- Build age income line chart ----
+
+# Reshape to long format so year can map to color ----
+ageIncomeLong <- ageIncome |>
+  pivot_longer(
+    cols = c(median_2023, median_2024),
+    names_to = "year",
+    values_to = "median_income"
+  ) |>
+  mutate(
+    year = if_else(
+      condition = (year == "median_2023"),
+      true = "2023",
+      false = "2024"
+    )
+  )
+
+# Set the order of age groups for the x-axis ----
+ageOrder <- c(
+  "15 to 24 years",
+  "25 to 34 years",
+  "35 to 44 years",
+  "45 to 54 years",
+  "55 to 64 years",
+  "65 years and older"
+)
+
+# Short labels for the x-axis (avoids overlap) ----
+ageLabels <- c(
+  "15 to 24 years"     = "15-24",
+  "25 to 34 years"     = "25-34",
+  "35 to 44 years"     = "35-44",
+  "45 to 54 years"     = "45-54",
+  "55 to 64 years"     = "55-64",
+  "65 years and older" = "65+"
+)
+
+# Build the plot ----
+ggplot(
+  data = ageIncomeLong,
+  mapping = aes(
+    x = age_group,
+    y = median_income,
+    color = year,
+    group = year
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  geom_text(
+    data = ageIncome,
+    mapping = aes(
+      x = age_group,
+      y = if_else(
+        condition = (median_2024 > median_2023),
+        true = median_2024,
+        false = median_2023
+      ),
+      label = paste0(
+        if_else(condition = (pct_change > 0), true = "+", false = ""),
+        format(pct_change, nsmall = 1),
+        "%",
+        if_else(condition = significant_change, true = "*", false = "")
+      )
+    ),
+    inherit.aes = FALSE,
+    vjust = -1.2,
+    size = 3.2,
+    fontface = "bold"
+  ) +
+  scale_x_discrete(limits = ageOrder, labels = ageLabels) +
+  scale_y_continuous(
+    labels = label_dollar(),
+    limits = c(40000, 130000)
+  ) +
+  scale_color_manual(
+    values = c("2023" = "#BC204B", "2024" = "#1E407C")
+  ) +
+  labs(
+    x = "Age of Householder",
+    y = "Median Household Income (2024 dollars)",
+    color = "Year",
+    caption = paste0(
+      "Source: U.S. Census Bureau, CPS ASEC, Table A-1.\n",
+      "Labels show real percent change in median income, 2024 less 2023; ",
+      "* indicates statistically significant change."
+    )
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    plot.caption = element_text(hjust = 0)
+  )
+```
+
+The most striking feature of @fig-ageIncomeCurve is the inverted-U
+shape of the income-age curve, which is consistent across both years.
+Median income roughly doubles between the youngest and peak-earning
+groups (\$60,310 versus \$116,800 in 2024), and then drops by half
+again at retirement.
+
+Year-over-year growth was strongest among the youngest households,
+where the 15--24 group gained 7.0% in real terms — the largest gain
+in the table, and statistically significant at the 90% confidence
+level — suggesting that the labor-market gains of 2024 were
+concentrated among younger workers entering the labor market. The
+35--44 and 45--54 groups also posted significant real-income gains of
+2.1% and 2.8% respectively. Only the 55--64 group lost ground in real
+terms, declining 1.5%, though that change was not flagged as
+statistically significant by the Census Bureau and so should be
+interpreted as noise rather than a real reversal.
+
+For drafting the alt text and long description for @fig-ageIncomeCurve,
+we used ASU's Image Accessibility AI Tool [@asuImageAccessibility].
+The tool generated a candidate long description from the rendered
+chart, which we then reviewed and corrected before incorporation.
+Specifically, the tool initially attributed the line colors backwards
+(mapping red to 2024 and blue to 2023, when the chart actually uses
+red for 2023 and blue for 2024), and we edited the description
+manually to fix this and to add the statistical significance
+asterisks the tool omitted.
+
+{{< pagebreak >}}
+
+# Discussion
+
+Across the three demographic characteristics examined in this report,
+the most consistent pattern is that the largest income disparities
+remain structural rather than driven by year-over-year change. The
+gap between bachelor's-degree-or-higher households and households
+without a high school diploma is several times larger than the gap
+between any two consecutive age groups, and the gap between male and
+female nonfamily householders, while smaller in absolute terms, has
+narrowed more in percentage terms than either of the other two
+disparities. Real-income changes between 2023 and 2024 were modest at
+the population level, but the gains were unevenly distributed:
+younger householders, households with a bachelor's degree or higher,
+and female nonfamily householders all saw real gains, while the
+55--64 age band and households without a high school diploma were
+the only groups examined here to lose ground in real terms.
+
+We are appropriately cautious about extrapolating from a two-year
+window. The CPS ASEC publishes one observation per year per
+characteristic, so this analysis captures a short-term snapshot
+rather than a long-term structural trend. A longer time series would
+be needed to distinguish a one-year fluctuation from a sustained
+shift, particularly given how recent decades have been shaped by
+major economic shocks: the dot-com bust, the 2008 financial crisis,
+and the COVID-19 pandemic each reshaped both the labor market and
+the income distribution. Future work could extend this analysis to a
+multi-year window and incorporate unemployment rates as a covariate
+to test whether age-, gender-, and education-specific income changes
+correlate with broader labor-market conditions.
+
+# Author Contributions
+
+This project was a collaborative effort by all three authors,
+following the CRediT contributor taxonomy [@brand2015]:
+
+- **William Dong:** Conceptualization (lead); Data Curation
+  (educational attainment); Investigation (educational attainment);
+  Visualization (Table 1, Figure 1); Writing -- Original Draft
+  (educational attainment section).
+- **Bingjie Yan:** Conceptualization (supporting); Data Curation
+  (gender); Investigation (gender); Visualization (Table 2,
+  Figure 2); Writing -- Original Draft (gender section).
+- **Ethan Tluszcz:** Data Curation (age of householder);
+  Investigation (age of householder); Methodology (data wrangling
+  pipeline, code style); Visualization (Table 3, Figure 3); Writing
+  -- Original Draft (introduction, data and methods, discussion).
+
+All authors reviewed code via Pull Request, contributed to the
+discussion section, and approved the final manuscript before
+submission.
+
+{{< pagebreak >}}
+
+# Appendix — Code
+
+```{r}
+#| label: codeAppend
+#| ref-label: !expr knitr::all_labels()
+#| echo: true
+#| eval: false
+```
