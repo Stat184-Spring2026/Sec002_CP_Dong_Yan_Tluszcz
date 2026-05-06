@@ -30,9 +30,9 @@ Our team plans to:
 A more detailed plan can be found in the project documentation within this repository.
 
 ## Repo Structure
-ReadME - decribes the project overview.
-PDF - provides the main documentation with the reposity
-Education and Gender - shows graphs about the education and gender disparity from 2023 to 2024
+- ReadME - decribes the project overview.
+- PDF - provides the main documentation with the reposity
+- Education and Gender - shows graphs about the education and gender disparity from 2023 to 2024
 
 ## Authors
 
