@@ -1,0 +1,199 @@
+---
+title: "CP #6"
+author: "William Dong"
+date: "May 5 2026"
+date-modified: now
+
+format:
+  docx: default
+
+execute:
+  echo: false
+  warning: false
+---
+
+```{r}
+library(tinytex)
+library(tidyverse)
+library(scales)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+# -----------------------------
+# CASE 1: EDUCATION
+# -----------------------------
+
+#The education results show a clear earnings premium associated with higher educational attainment. Households headed by individuals with a bachelor's degree or higher earned substantially more than all other education groups in both years, reinforcing the strong income advantage of college completion. Those with some college also earned more than high school graduates, though the difference was much smaller.
+
+#A notable exception appears among households without a high school diploma. This group was the only education category to experience a decline in real median income from 2023 to 2024, indicating that households with the lowest educational attainment became slightly worse off in inflation-adjusted terms. In contrast, all other education groups saw modest gains, suggesting that income growth in 2024 was concentrated among households with at least a high school education.
+
+
+edu_summary <- data.frame(
+  education = c("No high school diploma", "High school graduate", "Some college", "Bachelor's degree or higher"),
+  income_2023 = c(37570, 57250, 75510, 130100),
+  income_2024 = c(36900, 58410, 76520, 132700),
+  percent_change = c(-1.8, 2.0, 1.3, 2.0)
+)
+
+# High school as baseline
+hs_2023 <- edu_summary$income_2023[2]
+hs_2024 <- edu_summary$income_2024[2]
+
+premium_analysis <- mutate(
+  edu_summary,
+  premium_2023 = (income_2023 / hs_2023) - 1,
+  premium_2024 = (income_2024 / hs_2024) - 1,
+  premium_delta = premium_2024 - premium_2023
+)
+
+cat("--- Analysis of Earnings Premium Relative to High School Graduates ---\n")
+print(select(premium_analysis, education, premium_2023, premium_2024, premium_delta))
+
+# Prepare plot data
+plot_data <- pivot_longer(
+  premium_analysis,
+  cols = c("premium_2023", "premium_2024"),
+  names_to = "Year",
+  values_to = "Premium"
+)
+
+plot_data <- plot_data[plot_data$education != "High school graduate", ]
+
+plot_data$Year <- ifelse(plot_data$Year == "premium_2023", "2023", "2024")
+
+plot_data$education <- factor(
+  plot_data$education,
+  levels = c(
+    "No high school diploma",
+    "Some college",
+    "Bachelor's degree or higher"
+  )
+)
+
+ggplot(plot_data, aes(x = education, y = Premium, fill = Year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = percent) +
+  labs(
+    title = "Higher Education Earnings Premium (2023 vs 2024)",
+    subtitle = "Relative to High School Graduates",
+    x = "Education Level",
+    y = "Premium Percentage",
+    caption = "Source: U.S. Census Bureau"
+  ) +
+  theme_minimal()
+```
+# -----------------------------
+# CASE 2: GENDER
+# -----------------------------
+```{r}
+
+#The gender comparison shows that male-householder households earned more than female-householder households in both 2023 and 2024. Although median income remained higher for men, female-householder households experienced income growth between the two years while male-householder households experienced a slight decline.
+
+#As a result, the female-to-male income ratio improved in 2024, indicating that the gender income gap narrowed slightly. Despite this improvement, the gap remains substantial, with female-householder households continuing to earn considerably less than male-householder households overall.
+
+gender_df <- data.frame(
+  group = c("Male Householder", "Female Householder"),
+  income_2023 = c(58680, 43230),
+  income_2024 = c(58000, 44870),
+  moe_2024 = c(1866, 1256)
+)
+
+# Calculate ratios (female / male)
+ratio_2023 <- gender_df$income_2023[2] / gender_df$income_2023[1]
+ratio_2024 <- gender_df$income_2024[2] / gender_df$income_2024[1]
+
+gender_analysis <- data.frame(
+  ratio_2023 = ratio_2023,
+  ratio_2024 = ratio_2024,
+  improvement = ratio_2024 - ratio_2023,
+  status = ifelse(ratio_2024 > ratio_2023, "Gap Narrowing", "Gap Widening")
+)
+
+cat("\n--- Gender Income Ratio (Female / Male) ---\n")
+print(gender_analysis)
+
+# Prepare gender plot
+plot_gender <- pivot_longer(
+  gender_df,
+  cols = c("income_2023", "income_2024"),
+  names_to = "Year",
+  values_to = "Income"
+)
+
+plot_gender$Year <- ifelse(plot_gender$Year == "income_2023", "2023", "2024")
+
+ggplot(plot_gender, aes(x = group, y = Income, fill = Year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = dollar(Income)), position = position_dodge(0.9), vjust = -0.5) +
+  labs(
+    title = "Median Income by Gender",
+    subtitle = "Comparison of 2023 vs 2024",
+    x = "Gender",
+    y = "Income (USD)"
+  ) +
+  theme_minimal()
+```
+# -----------------------------
+# CASE 3: AGE
+# -----------------------------
+```{r}
+library(readxl)
+#Age is also strongly associated with household income. Median household income generally rises with age through prime working years, peaks among households aged 45 to 54, and then declines in older age groups. This pattern reflects the typical life-cycle of earnings, where income increases with labor market experience and career advancement before falling as households approach retirement.
+
+#Among all age groups, households aged 45 to 54 were the most financially advantaged, reporting the highest median income. Younger households, especially those aged 15 to 24, earned substantially less, reflecting lower labor force attachment and earlier career stages. Income also declines among households aged 65 and older, which is consistent with retirement and reduced wage income.
+
+#Several age groups experienced statistically meaningful changes between 2023 and 2024, particularly those aged 15 to 24, 35 to 44, and 45 to 54. This suggests that income changes in 2024 were not the same as some working-age groups seeing more measurable shifts than others.
+# Census Excel file
+url <- "https://www2.census.gov/programs-surveys/demo/tables/p60/286/tableA1.xlsx"
+
+# Download to temporary local file
+tmp <- tempfile(fileext = ".xlsx")
+download.file(url, destfile = tmp, mode = "wb")
+
+# Read downloaded Excel file
+ageRaw <- read_excel(tmp, sheet = 1)
+
+# Clean column names manually
+ageIncome <- ageRaw |>
+  rename(
+    age_group = 1,
+    households_2023 = 2,
+    median_2023 = 3,
+    moe_2023 = 4,
+    households_2024 = 5,
+    median_2024 = 6,
+    moe_2024 = 7,
+    pct_change = 8,
+    pct_change_moe = 9
+  )
+
+# Keep only age rows
+ageIncome <- ageIncome |>
+  filter(age_group %in% c(
+    "Under 65 years",
+    "15 to 24 years",
+    "25 to 34 years",
+    "35 to 44 years",
+    "45 to 54 years",
+    "55 to 64 years",
+    "65 years and older"
+  ))
+
+# Remove aggregate row
+ageIncome <- ageIncome |>
+  filter(age_group != "Under 65 years")
+
+# Add significance flag
+ageIncome <- ageIncome |>
+  mutate(
+    significant_change = age_group %in% c(
+      "15 to 24 years",
+      "35 to 44 years",
+      "45 to 54 years"
+    ),
+    pct_change = readr::parse_number(as.character(pct_change))
+  )
+
+print(ageIncome)
+```
