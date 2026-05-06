@@ -1,6 +1,6 @@
 ---
 title: "CP #6"
-author: "William Dong"
+authors: "William Dong, Ethan Tluszcz, Binjae Yan"
 date: "May 5 2026"
 date-modified: now
 
@@ -20,6 +20,7 @@ library(dplyr)
 library(tidyr)
 library(readr)
 
+# 1) Introduction:
 # -----------------------------
 # CASE 1: EDUCATION
 # -----------------------------
@@ -137,63 +138,323 @@ ggplot(plot_gender, aes(x = group, y = Income, fill = Year)) +
 # -----------------------------
 # CASE 3: AGE
 # -----------------------------
+---
+title: "Household Income by Age of Householder, 2023-2024"
+subtitle: "Stat 184 Course Project — Age Section"
+author: "Ethan Tluszcz"
+date: "May 1, 2026"
+date-modified: now
+format:
+  pdf:
+    toc: false
+    number-sections: true
+    number-depth: 5
+    fig-align: center
+    cap-location: top
+    geometry:
+      - top=1in
+      - left=1in
+      - right=1in
+      - bottom=1in
+    colorlinks: true
+    include-in-header:
+      text: |
+        \usepackage{fvextra}
+        \DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+          commandchars=\\\{\},
+          breaklines,
+          breaknonspaceingroup,
+          breakanywhere
+        }
+execute:
+  echo: false
+  warning: false
+  message: false
+  bibliography: references.bib
+  csl: apa7.csl
+---
+
 ```{r}
-library(readxl)
-#Age is also strongly associated with household income. Median household income generally rises with age through prime working years, peaks among households aged 45 to 54, and then declines in older age groups. This pattern reflects the typical life-cycle of earnings, where income increases with labor market experience and career advancement before falling as households approach retirement.
+#| label: setupPackages
+#| include: false
 
-#Among all age groups, households aged 45 to 54 were the most financially advantaged, reporting the highest median income. Younger households, especially those aged 15 to 24, earned substantially less, reflecting lower labor force attachment and earlier career stages. Income also declines among households aged 65 and older, which is consistent with retirement and reduced wage income.
+#Load Required Packages
+# Style Guide: BOAST/Tidyverse (https://style.tidyverse.org/)
+# Coding standards: snake_case for column names, camelCase for
+# variable names, native pipe |>,
+library(tidyverse)
+library(tinytex)
+library(knitr)
+library(kableExtra)
+```
 
-#Several age groups experienced statistically meaningful changes between 2023 and 2024, particularly those aged 15 to 24, 35 to 44, and 45 to 54. This suggests that income changes in 2024 were not the same as some working-age groups seeing more measurable shifts than others.
-# Census Excel file
-url <- "https://www2.census.gov/programs-surveys/demo/tables/p60/286/tableA1.xlsx"
+# Introduction
 
-# Download to temporary local file
-tmp <- tempfile(fileext = ".xlsx")
-download.file(url, destfile = tmp, mode = "wb")
+Median household income varies substantially across the U.S.
+population, and one of the most consistent patterns is the
+relationship between income and the age of the householder. This
+section explores how median household income changes across the
+life cycle, using 2023 and 2024 data from the U.S. Census Bureau's
+Current Population Survey Annual Social and Economic Supplement
+(CPS ASEC), Table A-1 [@censusBureau2025].
 
-# Read downloaded Excel file
-ageRaw <- read_excel(tmp, sheet = 1)
+# Data and Methods
 
-# Clean column names manually
+The data in this section come from the Census Bureau report *Income
+in the United States: 2024* (Report Number P60-285), Table A-1:
+*Income Summary Measures by Selected Characteristics, 2023 and 2024*.
+Income figures are reported in 2024 dollars, adjusted using the
+Chained Consumer Price Index for All Urban Consumers (C-CPI-U).
+Households are surveyed as of March of the following year. 
+
+The Census Bureau publishes Table A-1 in a format that mixes section
+headers with data rows, The wrangling pipeline below reads the raw CSV slice for the *Age of Householder* characteristic, drops the "Under 65 years" total row that would double-count the detail age groups, captures the
+asterisk significance flags into a dedicated logical column, and
+uses `parse_number()` from `{readr}` to turn the percent-change
+column into numeric type.
+
+```{r}
+#| label: dataAgeWrangle
+
+# Primary Author: Ethan Tluszcz
+#Read and clean Census age income data
+
+# Step 1: Read the raw CSV
+ageRaw <- read.csv("age_income_raw.csv")
+
+# Step 2: Wrangle in a piped sequence
 ageIncome <- ageRaw |>
   rename(
-    age_group = 1,
-    households_2023 = 2,
-    median_2023 = 3,
-    moe_2023 = 4,
-    households_2024 = 5,
-    median_2024 = 6,
-    moe_2024 = 7,
-    pct_change = 8,
-    pct_change_moe = 9
-  )
-
-# Keep only age rows
-ageIncome <- ageIncome |>
-  filter(age_group %in% c(
-    "Under 65 years",
-    "15 to 24 years",
-    "25 to 34 years",
-    "35 to 44 years",
-    "45 to 54 years",
-    "55 to 64 years",
-    "65 years and older"
-  ))
-
-# Remove aggregate row
-ageIncome <- ageIncome |>
-  filter(age_group != "Under 65 years")
-
-# Add significance flag
-ageIncome <- ageIncome |>
+    age_group = characteristic,
+    households_2023 = Population_2023,
+    median_2023 = Income_2023,
+    moe_2023 = MOE_2023,
+    households_2024 = Population_2024,
+    median_2024 = Income_2024,
+    moe_2024 = MOE_2024,
+    pct_change = pct_change_Income,
+    pct_change_moe = pct_change_MOE
+  ) |>
+  filter(age_group != "Under 65 years") |>
   mutate(
-    significant_change = age_group %in% c(
-      "15 to 24 years",
-      "35 to 44 years",
-      "45 to 54 years"
+    significant_change = if_else(
+      condition = (age_group %in% c(
+        "15 to 24 years",
+        "35 to 44 years",
+        "45 to 54 years"
+      )),
+      true = TRUE,
+      false = FALSE
     ),
-    pct_change = readr::parse_number(as.character(pct_change))
+    pct_change = parse_number(pct_change)
+  )
+```
+
+
+{{< pagebreak >}}
+
+# Findings
+
+@tbl-ageIncome reports the underlying 2023 and 2024 values for each
+age group along with the year to year percent change in real
+income, and @fig-ageIncomeCurve plots the same values as two
+overlaid lines so the year-over-year change at each life stage is
+easy to read at a glance.
+
+```{r}
+#| label: tbl-ageIncome
+#| tbl-cap: "Median Household Income by Age of Householder, 2023-2024"
+#| tbl-pos: H
+#| html-table-processing: none
+
+# Primary Author: Ethan Tluszcz
+#Build age income table
+
+ageIncome |>
+  mutate(
+    pct_change_label = paste0(
+      if_else(condition = (pct_change > 0), true = "+", false = ""),
+      format(pct_change, nsmall = 1),
+      "%",
+      if_else(condition = significant_change, true = "*", false = "")
+    )
+  ) |>
+  select(
+    age_group,
+    households_2023,
+    median_2023,
+    households_2024,
+    median_2024,
+    pct_change_label
+  ) |>
+  kable(
+    digits = 0,
+    col.names = c(
+      "Age",
+      "Households 2023",
+      "Median $ 2023",
+      "Households 2024",
+      "Median $ 2024",
+      "Percent Change"
+    )
+  ) |>
+  kable_classic(latex_options = "HOLD_position") |>
+  footnote(
+    general = paste(
+      "Median income reported in 2024 dollars (CPI-U adjusted).",
+      "Asterisks indicate that the year-over-year change in real income",
+      "was statistically significant at the 90% confidence level.",
+      "Source: U.S. Census Bureau, CPS ASEC, Table A-1."
+    ),
+    general_title = "",
+    threeparttable = TRUE
+  )
+```
+
+```{r}
+#| label: fig-ageIncomeCurve
+#| fig-cap: "Median Household Income by Age of Householder, 2023 vs 2024"
+#| fig-pos: H
+#| fig-alt: "Line graph comparing median household income by age group for 2023 and 2024,
+#|  showing income increases and decreases."
+#| fig-height: 4.5
+
+# Primary Author: Ethan Tluszcz
+#Build age income line chart
+
+# Reshape to long format so year can map to color
+ageIncomeLong <- ageIncome |>
+  pivot_longer(
+    cols = c(median_2023, median_2024),
+    names_to = "year",
+    values_to = "median_income"
+  ) |>
+  mutate(
+    year = if_else(
+      condition = (year == "median_2023"),
+      true = "2023",
+      false = "2024"
+    )
   )
 
-print(ageIncome)
+# Set the order of age groups for the x-axis
+ageOrder <- c(
+  "15 to 24 years",
+  "25 to 34 years",
+  "35 to 44 years",
+  "45 to 54 years",
+  "55 to 64 years",
+  "65 years and older"
+)
+ageLabels <- c(
+  "15 to 24 years"     = "15-24",
+  "25 to 34 years"     = "25-34",
+  "35 to 44 years"     = "35-44",
+  "45 to 54 years"     = "45-54",
+  "55 to 64 years"     = "55-64",
+  "65 years and older" = "65+"
+)
+# Build the plot
+ggplot(
+  data = ageIncomeLong,
+  mapping = aes(
+    x = age_group,
+    y = median_income,
+    color = year,
+    group = year
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  geom_text(
+    data = ageIncome,
+    mapping = aes(
+      x = age_group,
+      y = if_else(
+        condition = (median_2024 > median_2023),
+        true = median_2024,
+        false = median_2023
+      ),
+      label = paste0(
+        if_else(condition = (pct_change > 0), true = "+", false = ""),
+        format(pct_change, nsmall = 1),
+        "%",
+        if_else(condition = significant_change, true = "*", false = "")
+      )
+    ),
+    inherit.aes = FALSE,
+    vjust = -1.2,
+    size = 3.2,
+    fontface = "bold"
+  ) +
+  scale_x_discrete(limits = ageOrder, labels = ageLabels) +
+  scale_y_continuous(
+    labels = scales::label_dollar(),
+    limits = c(40000, 130000)
+  ) +
+  scale_color_manual(
+    values = c("2023" = "red", "2024" = "blue")
+  ) +
+  labs(
+    x = "Age of Householder",
+    y = "Median Household Income (2024 dollars)",
+    color = "Year",
+    caption = paste(
+      "Source: U.S. Census Bureau, CPS ASEC, Table A-1.\n",
+      "Labels show real percent change in median income, 2024 less 2023;",
+      "* indicates statistically significant change."
+    )
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    plot.caption = element_text(hjust = 0)
+  )
+ggsave(
+  filename = "images/age_income_chart.png",
+  width = 7,
+  height = 4.5,
+  dpi = 300
+)
+```
+
+Reading @tbl-ageIncome and @fig-ageIncomeCurve together, the most
+striking feature is the inverted-U shape of the income-age curve,
+which is consistent across both years of data. Median income roughly
+doubles between the youngest and peak-earning groups
+(\$60,310 versus \$116,800 in 2024), and then drops by half again
+at retirement.
+
+Decade to Decade growth was strongest among the youngest households,
+where the 15--24 group gained 7.0% in real terms,from 2023-2024, the largest gain in the data, and statistically significant at the 90% confidence
+level — suggesting that the labor-market gains of 2024 were
+concentrated among younger workers. The 35--44 and 45--54 groups
+also posted significant real-income gains of 2.1% and 2.8%
+respectively. Only the 55--64 group lost ground in real terms,
+declining 1.5%, though that change was not flagged as statistically
+significant by the Census Bureau.
+
+For the Alt-Text and long Descriptions I used the ASU image Accessibility tool[@asuImageAccessibility] The output for our long description was: The image is a line graph titled "Figure 1: Median Household Income by Age of Householder, 2023 vs 2024." The horizontal axis represents the "Age of Householder" in categories: 15–24, 25–34, 35–44, 45–54, 55–64, and 65+. The vertical axis represents "Median Household Income (2024 dollars)" ranging from 40,000 to 120,000. Two lines are plotted: a blue line for 2024 and a red line for 2023. The graph shows an increase in income from ages 15–24 to 45–54, followed by a decline to age 65+. The difference between the two years is denoted by percentage increases next to the data points: +7% at 15–24, +2.4% at 25–34, +2.1% at 35–44, +2.8% at 45–54, -1.5% at 55–64, and +1% at 65+. A legend below the graph identifies the colors corresponding to the years 2023 and 2024. The source is attributed to "U.S. Census Bureau, CPS ASEC, Table A–1.
+The original long description got the line colors wrong, i corrected them manually
+
+# Discussion
+
+The age of householder findings reinforce a long-standing pattern in
+U.S. labor and income data: earnings rise with experience and seniority
+through mid-career.However, the youngest age group experienced both
+the largest and most significant relative gain, which is consistent
+with reports of strong wage growth at the bottom of the labor market
+during this period.I wonder if more recent data would indicate a decline at all age groups due to shifts in the job market, looking into whether or not unemployment is a significant predictor would also bee good too. 
+
+This analysis captures a short-term snapshot rather than a long-term structural trend. A larger data set over the years would be needed to distinguish real changes in income over the years.Big economic events such as The Dot Com Bubble, the 2008 Housing Crisis and the Covid-19 Pandemic all seriously affected jobs as well as income over the past 25 years. 
+
+{{< pagebreak >}}
+
+# Appendix — Code
+
+```{r}
+#| label: codeAppend
+#| ref-label: !expr knitr::all_labels()
+#| echo: true
+#| eval: false
 ```
